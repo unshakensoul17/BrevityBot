@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.h5
+*.ckpt
+models/
+datasets/
+cache/
+.git/
+node_modules/

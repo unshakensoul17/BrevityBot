@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Summarizer</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f3ee;
+            --surface: #ffffff;
+            --surface-soft: #f9faf7;
+            --ink: #171717;
+            --muted: #6b6f76;
+            --line: #dfded8;
+            --accent: #0f766e;
+            --accent-dark: #115e59;
+            --accent-soft: #d8f3ee;
+            --coral: #e76f51;
+            --shadow: 0 24px 60px rgba(31, 41, 55, 0.12);
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 12% 12%, rgba(15, 118, 110, 0.12), transparent 34%),
+                linear-gradient(135deg, #f7f5ef 0%, #eef5f2 45%, #f8f4ed 100%);
+            color: var(--ink);
+        }
+
+        button,
+        textarea {
+            font: inherit;
+        }
+
+        .app-shell {
+            width: min(1180px, calc(100% - 32px));
+            min-height: 100vh;
+            margin: 0 auto;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 24px;
+            padding: 28px 0;
+        }
+
+        .topbar,
+        .status-row,
+        .summary-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 750;
+            letter-spacing: 0;
+        }
+
+        .brand-mark {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(15, 118, 110, 0.26);
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: 0 10px 24px rgba(15, 118, 110, 0.12);
+            color: var(--accent);
+        }
+
+        .health-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 0 12px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            color: var(--muted);
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .health-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.12);
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.78fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .panel {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(223, 222, 216, 0.92);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.84);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            animation: rise-in 560ms ease both;
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--coral), #2f4858);
+        }
+
+        .editor-panel,
+        .result-panel {
+            padding: 24px;
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: var(--accent-dark);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+            letter-spacing: 0;
+        }
+
+        h1 {
+            max-width: 680px;
+            font-size: clamp(34px, 6vw, 68px);
+            line-height: 0.96;
+        }
+
+        h2 {
+            font-size: 22px;
+        }
+
+        .intro {
+            max-width: 620px;
+            margin: 18px 0 26px;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.65;
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 365px;
+            resize: vertical;
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            outline: none;
+            background: var(--surface-soft);
+            color: var(--ink);
+            font-size: 16px;
+            line-height: 1.6;
+            transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        textarea:focus {
+            border-color: rgba(15, 118, 110, 0.62);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .metric {
+            min-width: 86px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(249, 250, 247, 0.86);
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .metric strong {
+            display: block;
+            color: var(--ink);
+            font-size: 17px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-button,
+        .primary-button {
+            height: 44px;
+            border: 0;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
+        }
+
+        .icon-button {
+            width: 44px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--muted);
+        }
+
+        .primary-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 154px;
+            padding: 0 18px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 750;
+            box-shadow: 0 14px 28px rgba(15, 118, 110, 0.24);
+        }
+
+        .icon-button:hover,
+        .primary-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .primary-button:hover {
+            background: var(--accent-dark);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.68;
+            transform: none;
+        }
+
+        .result-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+
+        .summary-actions {
+            margin-bottom: 18px;
+        }
+
+        .summary-box {
+            position: relative;
+            flex: 1;
+            min-height: 365px;
+            padding: 22px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
+        }
+
+        #summary-text {
+            margin: 0;
+            color: #262626;
+            font-size: 17px;
+            line-height: 1.72;
+            white-space: pre-wrap;
+        }
+
+        .empty-state {
+            height: 100%;
+            min-height: 320px;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .empty-state svg {
+            margin-bottom: 14px;
+            color: var(--accent);
+        }
+
+        .status-row {
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .progress-track {
+            position: relative;
+            width: 140px;
+            height: 6px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e9e7df;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--accent);
+            transition: width 220ms ease;
+        }
+
+        .progress-bar.loading {
+            width: 45%;
+            animation: loading-slide 1.1s ease-in-out infinite;
+        }
+
+        .toast {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 20;
+            max-width: min(360px, calc(100vw - 32px));
+            padding: 14px 16px;
+            border: 1px solid rgba(15, 118, 110, 0.18);
+            border-radius: var(--radius);
+            background: #10201f;
+            color: #fff;
+            box-shadow: 0 18px 40px rgba(16, 32, 31, 0.28);
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        footer {
+            display: flex;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @keyframes rise-in {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes loading-slide {
+            0% {
+                transform: translateX(-105%);
+            }
+            50% {
+                transform: translateX(75%);
+            }
+            100% {
+                transform: translateX(235%);
+            }
+        }
+
+        @media (max-width: 880px) {
+            .app-shell {
+                width: min(100% - 24px, 680px);
+                padding: 18px 0;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-panel,
+            .result-panel {
+                padding: 18px;
+            }
+
+            textarea,
+            .summary-box {
+                min-height: 280px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .topbar,
+            .toolbar,
+            .status-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .button-row,
+            .primary-button {
+                width: 100%;
+            }
+
+            .icon-button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app-shell">
+        <header class="topbar">
+            <div class="brand" aria-label="Text Summarizer">
+                <div class="brand-mark" aria-hidden="true">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 5.5h14M5 10h10M5 14.5h14M5 19h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span>Text Summarizer</span>
+            </div>
+            <div class="health-pill">
+                <span class="health-dot" aria-hidden="true"></span>
+                <span id="connection-status">API ready</span>
+            </div>
+        </header>
+
+        <section class="workspace" aria-label="Text summarization workspace">
+            <form class="panel editor-panel" id="summarization-form">
+                <p class="eyebrow">Hugging Face Transformer</p>
+                <h1>Turn long text into a crisp summary.</h1>
+                <p class="intro">Paste an article, notes, meeting transcript, or rough draft. The local model will condense it into a shorter version while keeping the main idea intact.</p>
+
+                <div class="input-wrap">
+                    <textarea id="dialogue-input" placeholder="Paste your text here..." spellcheck="true" required></textarea>
+                </div>
+
+                <div class="toolbar">
+                    <div class="metrics" aria-live="polite">
+                        <div class="metric"><strong id="word-count">0</strong> Words</div>
+                        <div class="metric"><strong id="char-count">0</strong> Characters</div>
+                        <div class="metric"><strong id="reading-time">0m</strong> Read</div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="icon-button" id="sample-button" type="button" title="Add sample text" aria-label="Add sample text">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <button class="icon-button" id="clear-button" type="button" title="Clear text" aria-label="Clear text">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M6 7h12M10 11v6M14 11v6M9 7l1-2h4l1 2M8 7l1 13h6l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button class="primary-button" id="submit-button" type="submit">
+                            <span id="submit-label">Summarize</span>
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <aside class="panel result-panel" aria-label="Generated summary">
+                <div class="summary-actions">
+                    <h2>Summary</h2>
+                    <button class="icon-button" id="copy-button" type="button" title="Copy summary" aria-label="Copy summary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 9h10v10H9zM5 15H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="summary-box" id="summary-output">
+                    <div class="empty-state" id="empty-state">
+                        <div>
+                            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M8 7h8M8 11h8M8 15h5M5 21l2.5-2H19a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <p>Your generated summary will appear here.</p>
+                        </div>
+                    </div>
+                    <p id="summary-text" hidden></p>
+                </div>
+
+                <div class="status-row">
+                    <span id="summary-status">Waiting for input</span>
+                    <div class="progress-track" aria-hidden="true">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <footer>Frontend on Vercel, model API on Render.</footer>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./config.js"></script>
+    <script>
+        const form = document.getElementById("summarization-form");
+        const dialogueInput = document.getElementById("dialogue-input");
+        const summaryText = document.getElementById("summary-text");
+        const emptyState = document.getElementById("empty-state");
+        const submitButton = document.getElementById("submit-button");
+        const submitLabel = document.getElementById("submit-label");
+        const copyButton = document.getElementById("copy-button");
+        const clearButton = document.getElementById("clear-button");
+        const sampleButton = document.getElementById("sample-button");
+        const summaryStatus = document.getElementById("summary-status");
+        const connectionStatus = document.getElementById("connection-status");
+        const progressBar = document.getElementById("progress-bar");
+        const wordCount = document.getElementById("word-count");
+        const charCount = document.getElementById("char-count");
+        const readingTime = document.getElementById("reading-time");
+        const toast = document.getElementById("toast");
+
+        const sampleText = "Artificial intelligence is changing the way teams handle large amounts of information. Instead of reading every page manually, people can use summarization tools to identify the main ideas, compare options, and decide what needs deeper attention. Good summaries do not replace careful reading, but they make the first pass faster and more focused.";
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add("show");
+            window.clearTimeout(showToast.timeout);
+            showToast.timeout = window.setTimeout(() => toast.classList.remove("show"), 2200);
+        }
+
+        function setSummaryState(text, isError = false) {
+            emptyState.hidden = Boolean(text);
+            summaryText.hidden = !text;
+            summaryText.textContent = text;
+            summaryText.style.color = isError ? "#b42318" : "";
+        }
+
+        function updateMetrics() {
+            const value = dialogueInput.value.trim();
+            const words = value ? value.split(/\s+/).length : 0;
+            wordCount.textContent = words;
+            charCount.textContent = dialogueInput.value.length;
+            readingTime.textContent = `${Math.max(0, Math.ceil(words / 220))}m`;
+            progressBar.style.width = `${Math.min(100, Math.round((words / 450) * 100))}%`;
+        }
+
+        const API_BASE_URL = (window.SUMMARIZER_API_URL || "").replace(/\/$/, "");
+
+        async function summarizeText(dialogue) {
+            const response = await fetch(`${API_BASE_URL}/summarize`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dialogue }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.detail || `Server error: ${response.status}`);
+            }
+
+            return data.summary || "No summary returned.";
+        }
+
+        async function checkApiHealth() {
+            connectionStatus.textContent = "Checking API";
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (!response.ok) {
+                    throw new Error(`Health check failed: ${response.status}`);
+                }
+
+                connectionStatus.textContent = "API ready";
+            } catch (error) {
+                connectionStatus.textContent = "API offline";
+            }
+        }
+
+        dialogueInput.addEventListener("input", updateMetrics);
+
+        sampleButton.addEventListener("click", () => {
+            dialogueInput.value = sampleText;
+            updateMetrics();
+            dialogueInput.focus();
+            showToast("Sample text added");
+        });
+
+        clearButton.addEventListener("click", () => {
+            dialogueInput.value = "";
+            setSummaryState("");
+            summaryStatus.textContent = "Waiting for input";
+            progressBar.classList.remove("loading");
+            updateMetrics();
+            dialogueInput.focus();
+        });
+
+        copyButton.addEventListener("click", async () => {
+            const text = summaryText.textContent.trim();
+            if (!text) {
+                showToast("No summary to copy yet");
+                return;
+            }
+
+            await navigator.clipboard.writeText(text);
+            showToast("Summary copied");
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const dialogue = dialogueInput.value.trim();
+            if (!dialogue) {
+                showToast("Add some text first");
+                dialogueInput.focus();
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitLabel.textContent = "Working";
+            connectionStatus.textContent = "Generating";
+            summaryStatus.textContent = "Summarizing text";
+            progressBar.classList.add("loading");
+            setSummaryState("Reading the important parts...");
+
+            try {
+                const summary = await summarizeText(dialogue);
+                setSummaryState(summary);
+                connectionStatus.textContent = "API ready";
+                summaryStatus.textContent = "Summary generated";
+                showToast("Summary ready");
+            } catch (error) {
+                setSummaryState(`Error: ${error.message}`, true);
+                connectionStatus.textContent = "Needs attention";
+                summaryStatus.textContent = "Request failed";
+            } finally {
+                submitButton.disabled = false;
+                submitLabel.textContent = "Summarize";
+                progressBar.classList.remove("loading");
+                updateMetrics();
+            }
+        });
+
+        updateMetrics();
+        checkApiHealth();
+    </script>
+</body>
+</html>

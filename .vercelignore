@@ -1,6 +1,12 @@
 venv/
 .venv/
 __pycache__/
+app.py
+requirements.txt
+render.yaml
+Procfile
+saved_summary_model/
+text_summarizer.ipynb
 *.pt
 *.pth
 *.bin

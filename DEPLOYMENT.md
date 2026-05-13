@@ -20,7 +20,7 @@ Replace the value with your real Vercel frontend URL after Vercel creates it.
 
 ## Frontend: Vercel
 
-Deploy the same repository as a static site. Vercel can serve `index.html` directly.
+Deploy the `web/` folder as the Vercel project root. That folder contains only the static frontend files, so Vercel will not try to interpret the repository as a FastAPI app.
 
 Update `config.js` with your real Render backend URL:
 
@@ -29,3 +29,5 @@ window.SUMMARIZER_API_URL = "https://text-summarizer-api.onrender.com";
 ```
 
 If Render gives you a different service URL, use that exact URL without a trailing slash.
+
+In the Vercel dashboard, set the project root directory to `web`.
